@@ -1,11 +1,13 @@
-// const Koa = require('koa')
 import Koa from 'koa'
+import cors from '@koa/cors'
 import { getAll } from './lib/database'
 
 const app = new Koa()
 
-// Set X-Response-Time
+// Cross-Origin Resource Sharing
+app.use(cors())
 
+// Set X-Response-Time
 app.use(async (ctx, next) => {
   const start = Date.now()
   await next()
@@ -14,7 +16,6 @@ app.use(async (ctx, next) => {
 })
 
 // Logging
-
 app.use(async (ctx, next) => {
   const start = Date.now()
   await next()
