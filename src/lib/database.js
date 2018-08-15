@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb'
+import { MongoClient, ObjectID } from 'mongodb'
 
 const DATABASE_URI = 'mongodb://127.0.0.1:27017'
 let db
@@ -25,29 +25,19 @@ export async function getAll() {
       projection: {
         name: 1,
         path: 1,
-        thumbnail: 1,
+        // thumbnail: 1,
       },
       sort: [['name', 'ascending']],
     },
-  ).limit(30).toArray()
+  ).limit(20).toArray()
 
   return images
 }
 
-export async function get(id, format = 'png') {
+export async function get(id) {
   const db = await getDb()
   const collection = db.collection('images')
-  const images = await collection.find(
-    {},
-    {
-      projection: {
-        name: 1,
-        path: 1,
-        thumbnail: 1,
-      },
-      sort: [['name', 'ascending']],
-    },
-  ).limit(30).toArray()
+  const image = await collection.findOne({ _id: new ObjectID(id) })
 
-  return images
+  return image
 }

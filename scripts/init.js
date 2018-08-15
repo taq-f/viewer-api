@@ -41,7 +41,11 @@ function walkHelper(dir, arr) {
     if (!f.directory) {
       arr.push(f)
     } else {
-      walkHelper(f.path, arr)
+      if (f.name === 'JPEG') {
+        // skip jpeg directory
+      } else {
+        walkHelper(f.path, arr)
+      }
     }
   }
 }

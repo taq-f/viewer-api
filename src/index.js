@@ -1,7 +1,7 @@
 import Koa from 'koa'
 import cors from '@koa/cors'
 import Router from 'koa-router'
-import { getAll } from './lib/database'
+import { getAll, get } from './lib/database'
 
 const app = new Koa()
 const router = new Router()
@@ -31,7 +31,8 @@ router.get('/images', async (ctx, next) => {
 })
 
 router.get('/images/:id', async (ctx, next) => {
-  ctx.body = await getAll()
+  const id = ctx.params.id
+  ctx.body = await get(id)
 })
 
 app.use(router.routes())
