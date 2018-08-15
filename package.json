@@ -10,6 +10,8 @@
     "serve": "parcel -t node src/index.js",
     "startserver": "wait-on dist/index.js && node-dev dist/index.js",
     "clear:dist": "trash dist",
+    "prebuild": "npm run clear:dist",
+    "build": "parcel build -t node src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -22,6 +24,7 @@
   },
   "devDependencies": {
     "node-dev": "^3.1.3",
+    "node-thumbnail": "^0.14.0",
     "npm-run-all": "^4.1.3",
     "parcel-bundler": "^1.9.7",
     "trash-cli": "^1.4.0",

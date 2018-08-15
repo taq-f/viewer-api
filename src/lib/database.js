@@ -24,9 +24,12 @@ export async function getAll() {
     {
       projection: {
         name: 1,
+        path: 1,
+        thumbnail: 1,
       },
+      sort: [['name', 'ascending']],
     },
-  ).toArray()
+  ).limit(30).toArray()
 
   return images
 }

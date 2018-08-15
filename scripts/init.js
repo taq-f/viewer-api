@@ -1,6 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 const mongodb = require('mongodb')
+const thumb = require('node-thumbnail').thumb
 
 const root = path.join(__dirname, '..', 'assets')
 
@@ -25,13 +26,11 @@ function walkHelper(dir, arr) {
     .map(f => {
       const absolutePath = path.join(dir, f)
       const s = fs.statSync(absolutePath)
-      const base64 = fs.readFileSync(absolutePath, 'base64')
 
       return {
         name: f,
         path: absolutePath,
         size: s.size,
-        data: base64,
         directory: s.isDirectory(),
       }
     })
@@ -45,6 +44,17 @@ function walkHelper(dir, arr) {
       walkHelper(f.path, arr)
     }
   }
+}
+
+function toThumbnails(files) {
+  return Promise.all(
+    files.map(f => thumb({
+      source: f.path,
+      destination: '.',
+      quiet: true,
+      width: 120,
+    }))
+  )
 }
 
 async function register(files) {
@@ -63,7 +73,7 @@ async function register(files) {
 
 function connect(uri) {
   return new Promise((resolve, reject) => {
-    mongodb.MongoClient.connect(uri, (err, db) => {
+    mongodb.MongoClient.connect(uri, { useNewUrlParser: true }, (err, db) => {
       if (err) {
         reject(err)
       } else {
@@ -85,4 +95,28 @@ function insert(db, files) {
   })
 }
 
-register(walk(root))
+async function main() {
+  const files = walk(root)
+  let thumbnails = await toThumbnails(files)
+  thumbnails = thumbnails.map(t => t[0])
+
+  const docs = files
+    .map((f, i) => {
+      const t = thumbnails[i];
+      const base64 = fs.readFileSync(t.dstPath, 'base64')
+
+      return {
+        name: f.name,
+        path: f.path.slice(root.length).replace(/\\/g, '/'),
+        thumbnail: fs.readFileSync(t.dstPath, 'base64'),
+        size: f.size,
+      }
+    })
+
+  // clean up thumbnail images
+  thumbnails.forEach(t => fs.unlinkSync(t.dstPath))
+
+  await register(docs)
+}
+
+main()
