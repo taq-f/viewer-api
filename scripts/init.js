@@ -2,7 +2,7 @@ const fs = require('fs')
 const path = require('path')
 const mongodb = require('mongodb')
 
-const root = path.join(__dirname, '..', 'assets') 
+const root = path.join(__dirname, '..', 'assets')
 
 function sort(stats) {
   const files = stats.filter(s => !s.directory)
@@ -25,10 +25,13 @@ function walkHelper(dir, arr) {
     .map(f => {
       const absolutePath = path.join(dir, f)
       const s = fs.statSync(absolutePath)
+      const base64 = fs.readFileSync(absolutePath, 'base64')
+
       return {
         name: f,
         path: absolutePath,
         size: s.size,
+        data: base64,
         directory: s.isDirectory(),
       }
     })
@@ -36,7 +39,7 @@ function walkHelper(dir, arr) {
   sort(files)
 
   for (f of files) {
-    if (! f.directory) {
+    if (!f.directory) {
       arr.push(f)
     } else {
       walkHelper(f.path, arr)

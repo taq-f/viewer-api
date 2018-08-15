@@ -4,9 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "prestart": "npm-run-all clear:dist serve",
-    "start": "wait-on dist/index.js && node dist/index.js",
+    "init": "node scripts/init.js",
+    "prestart": "npm run clear:dist",
+    "start": "npm-run-all -p serve startserver",
     "serve": "parcel -t node src/index.js",
+    "startserver": "wait-on dist/index.js && node dist/index.js",
     "clear:dist": "trash dist",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
