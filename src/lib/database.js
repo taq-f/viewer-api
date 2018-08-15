@@ -33,3 +33,21 @@ export async function getAll() {
 
   return images
 }
+
+export async function get(id, format = 'png') {
+  const db = await getDb()
+  const collection = db.collection('images')
+  const images = await collection.find(
+    {},
+    {
+      projection: {
+        name: 1,
+        path: 1,
+        thumbnail: 1,
+      },
+      sort: [['name', 'ascending']],
+    },
+  ).limit(30).toArray()
+
+  return images
+}

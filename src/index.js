@@ -1,8 +1,10 @@
 import Koa from 'koa'
 import cors from '@koa/cors'
+import Router from 'koa-router'
 import { getAll } from './lib/database'
 
 const app = new Koa()
+const router = new Router()
 
 // Cross-Origin Resource Sharing
 app.use(cors())
@@ -23,9 +25,16 @@ app.use(async (ctx, next) => {
   console.log(`${ctx.method} ${ctx.url} - ${ms}ms`)
 })
 
-app.use(async ctx => {
-  const images = await getAll()
-  ctx.body = images
+// Routes
+router.get('/images', async (ctx, next) => {
+  ctx.body = await getAll()
 })
 
+router.get('/images/:id', async (ctx, next) => {
+  ctx.body = await getAll()
+})
+
+app.use(router.routes())
+
+// Start server
 app.listen(3000)
