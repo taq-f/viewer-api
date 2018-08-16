@@ -1,7 +1,7 @@
 import Koa from 'koa'
 import cors from '@koa/cors'
 import Router from 'koa-router'
-import { getAll, get } from './lib/database'
+import { getList, get, getThumbnail } from './lib/database'
 
 const app = new Koa()
 const router = new Router()
@@ -26,12 +26,25 @@ app.use(async (ctx, next) => {
 })
 
 // Routes
+
 router.get('/images', async (ctx, next) => {
-  ctx.body = await getAll()
+  console.log(ctx.request.query);
+  const { q, limit } = ctx.request.query
+
+  ctx.body = await getList({
+    filter: q,
+    limit: Number(limit),
+  })
+})
+
+router.get('/images/thumbnails/:id', async (ctx, next) => {
+  const id = ctx.params.id
+  ctx.body = await getThumbnail(id)
 })
 
 router.get('/images/:id', async (ctx, next) => {
   const id = ctx.params.id
+  ctx.type = 'image/png'
   ctx.body = await get(id)
 })
 
