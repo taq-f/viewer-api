@@ -28,12 +28,12 @@ app.use(async (ctx, next) => {
 // Routes
 
 router.get('/images', async (ctx, next) => {
-  console.log(ctx.request.query);
-  const { q, limit } = ctx.request.query
+  const { q, limit, offset } = ctx.request.query
 
   ctx.body = await getList({
     filter: q,
     limit: Number(limit),
+    offset: Number(offset),
   })
 })
 

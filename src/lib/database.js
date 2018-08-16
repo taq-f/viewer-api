@@ -77,6 +77,8 @@ export async function getList(options = {}) {
     query.name = new RegExp(options.filter)
   }
 
+  const skip = options.offset || 0
+
   // the number of documeents be retrieved
   // TODO need max?
   const limit = options.limit || DEFAULT_RESPONSE_NUM
@@ -90,7 +92,7 @@ export async function getList(options = {}) {
       },
       sort: [['name', 'ascending']],
     },
-  ).limit(limit).toArray()
+  ).skip(skip).limit(limit).toArray()
 
   return images
 }
