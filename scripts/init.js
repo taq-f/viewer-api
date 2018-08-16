@@ -3,17 +3,7 @@ const path = require('path')
 const mongodb = require('mongodb')
 const thumb = require('node-thumbnail').thumb
 
-const root = path.join(__dirname, '..', 'assets')
-
-function sort(stats) {
-  const files = stats.filter(s => !s.directory)
-  const directories = stats.filter(s => s.directory)
-  // files first
-  return [
-    ...files.sort((s1, s2) => s1.name > s2.name),
-    ...directories.sort((s1, s2) => s1.name > s2.name),
-  ]
-}
+const ROOT = path.join(__dirname, '..', 'assets')
 
 function walk(dir) {
   const allFiles = []
@@ -35,92 +25,119 @@ function walkHelper(dir, arr) {
       }
     })
 
-  sort(files)
-
   for (f of files) {
     if (!f.directory) {
       arr.push(f)
     } else {
-      if (f.name === 'JPEG') {
-        // skip jpeg directory
-      } else {
-        walkHelper(f.path, arr)
-      }
+      walkHelper(f.path, arr)
     }
   }
 }
 
-function toThumbnails(files) {
-  return Promise.all(
-    files.map(f => thumb({
-      source: f.path,
-      destination: '.',
-      quiet: true,
-      width: 120,
-    }))
-  )
-}
+async function main() {
+  // get image files recursively
+  let files = walk(ROOT)
 
-async function register(files) {
+  // convert files into more convinient form
+  files = files.map(f => {
+    return {
+      name: path.basename(f.path, path.extname(f.path)), // no extension, since different format images are merged
+      path: f.path.slice(ROOT.length).replace(new RegExp('\\' + path.sep, 'g'), '/'),
+      extension: path.extname(f.path).slice(1).toLowerCase(),
+    }
+  })
+
+  // filter unwanted files (unsupported image files, text files, etc)
+  const supported = new Set(['jpg', 'jpeg', 'png'])
+  files = files.filter(f => supported.has(f.extension))
+
   let client
   try {
-    client = await connect('mongodb://127.0.0.1:27017')
+    // open database
+    client = await mongodb.MongoClient.connect('mongodb://127.0.0.1:27017', { useNewUrlParser: true })
     const db = client.db('images')
-    const result = await insert(db, files)
-    console.log(result)
+    const collection = db.collection('images')
+
+    // clean up
+    await collection.deleteMany({})
+
+    // register files into database
+    // MongoDB Document format
+    // {
+    //   "_id": "id, which mongodb gives",
+    //   "name": "name of the file without extension",
+    //   "path": {
+    //     "png": "png file path",
+    //     "jpeg": "jpeg file path"
+    //   },
+    //   "formats": [ "jpeg", "png" ]
+    // }
+
+    for (const file of files) {
+      // find the name to see if it's already registered
+      const doc = await collection.findOne({ name: file.name })
+
+      if (doc) {
+        // if the file already exists on database, merge it
+        await collection.updateOne(
+          { _id: new mongodb.ObjectID(doc._id) },
+          {
+            $set: {
+              path: Object.assign(
+                file.extension === 'png' ? { png: file.path } : { jpeg: file.path },
+                doc.path
+              ),
+              formats: [...doc.formats, file.extension]
+            }
+          }
+        )
+      } else {
+        await collection.insertOne({
+          name: file.name,
+          path: file.extension === 'png' ? { png: file.path } : { jpeg: file.path },
+          formats: [file.extension],
+          thumbnail: '',
+        })
+      }
+    }
+
+    // add thumbnails
+    for (const doc of await collection.find({}).toArray()) {
+      let p // image path fr thumbnal
+
+      if (doc.formats.includes('png')) {
+        p = doc.path.png
+      } else if (doc.formats.includes('jpeg')) {
+        p = doc.path.jpeg
+      } else {
+        console.log('WARN!', `unable to generate thumbnail for ${doc.name}`)
+        continue
+      }
+
+      const thumbnailInfo = await thumb({
+        source: path.join(ROOT, p),
+        destination: '.',
+        quiet: true,
+        width: 120,
+      })
+
+      await collection.updateOne(
+        { _id: new mongodb.ObjectID(doc._id) },
+        {
+          $set: {
+            thumbnail: fs.readFileSync(thumbnailInfo[0].dstPath, 'base64')
+          }
+        }
+      )
+
+      fs.unlinkSync(thumbnailInfo[0].dstPath)
+    }
+
   } catch (error) {
     console.log('ERROR!', error)
   } finally {
     if (client) client.close()
   }
-}
-
-function connect(uri) {
-  return new Promise((resolve, reject) => {
-    mongodb.MongoClient.connect(uri, { useNewUrlParser: true }, (err, db) => {
-      if (err) {
-        reject(err)
-      } else {
-        resolve(db)
-      }
-    })
-  })
-}
-
-function insert(db, files) {
-  return new Promise((resolve, reject) => {
-    db.collection('images').insertMany(files, (err, result) => {
-      if (err) {
-        reject(err)
-      } else {
-        resolve(result)
-      }
-    })
-  })
-}
-
-async function main() {
-  const files = walk(root)
-  let thumbnails = await toThumbnails(files)
-  thumbnails = thumbnails.map(t => t[0])
-
-  const docs = files
-    .map((f, i) => {
-      const t = thumbnails[i];
-      const base64 = fs.readFileSync(t.dstPath, 'base64')
-
-      return {
-        name: f.name,
-        path: f.path.slice(root.length).replace(/\\/g, '/'),
-        thumbnail: fs.readFileSync(t.dstPath, 'base64'),
-        size: f.size,
-      }
-    })
-
-  // clean up thumbnail images
-  thumbnails.forEach(t => fs.unlinkSync(t.dstPath))
-
-  await register(docs)
 }
 
 main()
