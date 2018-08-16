@@ -63,3 +63,6 @@ typings/
 # parcel output
 /dist
 /.cache
+
+# assets to serve
+/assets
